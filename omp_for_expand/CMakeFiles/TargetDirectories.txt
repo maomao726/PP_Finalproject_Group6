@@ -1,0 +1,3 @@
+/home/hcchen/Desktop/BadmintonCourt/CourtDetect/CMakeFiles/detect.dir
+/home/hcchen/Desktop/BadmintonCourt/CourtDetect/CMakeFiles/edit_cache.dir
+/home/hcchen/Desktop/BadmintonCourt/CourtDetect/CMakeFiles/rebuild_cache.dir
