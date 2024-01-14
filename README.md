@@ -8,7 +8,10 @@
 
 
 ## Clone the repository
-`$ git clone https://github.com/maomao726/PP_Finalproject_Group6.git`
+```
+$ git clone https://github.com/maomao726/PP_Finalproject_Group6.git
+$ cd {repo}/{version}
+```
 
 ## Install CMake
 `$ sudo apt install cmake`
@@ -27,7 +30,6 @@
 
 ## (Optional) Edit conanfile
 ```
-    $ cd {repo}/{version}
     $ vim conanfile.txt
 ```
 * Change opencv version to newer one (original version, 3.4.3, is too old. ) and generators
@@ -37,9 +39,10 @@
 ## (Optional) Create conan profile
 * If you lost your conan profile, you can create a new one with this command: 
 
-`$ conan profile new default --detect    // version 1.X`
-
-`$ conan profile detect    // version 2.X`
+```
+$ conan profile new default --detect    // version 1.X
+$ conan profile detect    // version 2.X
+```
 * You can check your profile with this command:
 `$ conan profile show {profileName}`
 
@@ -48,22 +51,22 @@
   ![](https://hackmd.io/_uploads/HJqNpNlFn.png)
 Try edit your configurations in your profile, permit conan to update/install the dependencies:
 ```
-    $ vim {path to your conan profile}    // default : ~/.conan/profiles/default
+$ vim {path to your conan profile}    // default : ~/.conan/profiles/default
 
-    add these lines in then save:
-      [conf]
-      tools.system.package_manager:mode = install
-      tools.system.package_manager:sudo = True
+add these lines in then save:
+  [conf]
+  tools.system.package_manager:mode = install
+  tools.system.package_manager:sudo = True
 ```
 
 ## Build
 ```
-    $ sh build.sh
-    or
-    $ mkdir build && cd build
-    $ conan install .. --build missing
-    $ cmake ..
-    $ cmake --build .
+$ sh build.sh
+or
+$ mkdir build && cd build
+$ conan install .. --build missing
+$ cmake ..
+$ cmake --build .
 ```
 If you run these instructions successfully, there should be a executable file `detect` under the directory `build/bin`. 
 
