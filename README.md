@@ -1,3 +1,5 @@
+:Warning: **This project is built based on [tennis-court-detection](https://github.com/gchlebus/tennis-court-detection.git)**
+
 # Environment
 ![](https://hackmd.io/_uploads/S1ZyYBeF3.png)
 ![](https://hackmd.io/_uploads/BkKDIHeK3.png)
@@ -5,15 +7,16 @@
 
 
 # Clone the repository
-Code will release soon
+`$ git clone https://github.com/maomao726/PP_Finalproject_Group6.git`
 # Library management packages
 `$ pip3 install conan`
-:::warning
-conan doesn't support **cmake** generator since version 2.0, which is replaced by **CMakeDeps** + **CMakeToolchain**.
+
+conan doesn't support **cmake** generator since version 2.0, which is replaced by **CMakeDeps** + **CMakeToolchain**. 
 
 To make sure the building process work, the easiest solution is to install previous version:
-    `$ pip3 install conan==1.5X`
-:::
+
+`$ pip3 install conan==1.5X`
+
 ## Profile example
 ![](https://hackmd.io/_uploads/SkdrYreKn.png)
 
