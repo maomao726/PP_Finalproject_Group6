@@ -8,7 +8,7 @@
 #include "DebugHelpers.h"
 #include "geometry.h"
 #include <algorithm>
-//#include <omp.h>
+#include <omp.h>
 
 struct edge
 {
@@ -327,22 +327,48 @@ void TennisCourtFitter::sortVerticalLines2(std::vector<Line>& vLines, const cv::
 }
 
 
-void TennisCourtFitter::findBestModelFit(cv::Mat binaryImage, cv::Mat rgbImage, const int num_threads)
+void TennisCourtFitter::findBestModelFit(const cv::Mat& binaryImage, const cv::Mat& rgbImage, const int num_threads)
 {
-    TennisCourtModel model;
-
-    for (int i = 0; i < hLinePairs.size(); i++)
+    int i = 0, j = 0;
+    #pragma omp parallel num_threads(num_threads)
     {
-      for (int j = 0; j < vLinePairs.size(); j++)
-      {
-          float score = model.fit(hLinePairs[i], vLinePairs[j], binaryImage, rgbImage);
 
-          if (score > bestModel.getBestScore())
-          {
-            bestModel = model; 
-          }
+      Mat bImg;
+      Mat rImg;
+      TennisCourtModel local_best;
+      TennisCourtModel model;
+      #pragma omp critical
+      {
+        bImg = binaryImage.clone();
+        rImg = rgbImage.clone();
+      }
+      int h_size = hLinePairs.size();
+      int v_size = vLinePairs.size(); 
+      int total = h_size * v_size;
+      #pragma omp for schedule(dynamic)
+      for (int i = 0; i < total; i++)
+      {
+        int h = i / v_size;
+        int v = i % v_size;
+        float score = model.fit(hLinePairs[h], vLinePairs[v], bImg, rImg);
+        //{
+        if (score > local_best.getBestScore())
+        {
+          local_best = model; 
+        }
 
       }
- 
+
+      
+
+      #pragma omp critical
+      {
+        if(local_best.getBestScore() > bestModel.getBestScore())
+        {
+          bestModel = local_best;
+        }
+      }
+
     }
+    
 }

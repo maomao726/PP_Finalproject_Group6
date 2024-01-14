@@ -8,8 +8,7 @@
 #include "DebugHelpers.h"
 #include "geometry.h"
 #include <algorithm>
-#include <thread>
-#include <mutex>
+#include <omp.h>
 
 struct edge
 {
@@ -22,8 +21,6 @@ bool sortwithEdgeWeight(edge a, edge b)
 {
     return a.weight > b.weight;
 }
-std::mutex mutex;
-std::mutex output_mutex;
 
 using namespace cv;
 
@@ -329,94 +326,51 @@ void TennisCourtFitter::sortVerticalLines2(std::vector<Line>& vLines, const cv::
     }
 }
 
-void TennisCourtFitter::localFindBest(arg_struct* arg)
-{
-  //std::cerr << arg->start<<arg->end<<std::endl;
-  TimeMeasurement::start("singleThread" + std::to_string(arg->thread_id));
-  for(int idx = arg->thread_id; idx < hLinePairs.size(); idx+=arg->num_threads)
-  {
-    TennisCourtModel model;
-    for (auto& vLinePair : vLinePairs)
-    {
-      float score = model.fit(hLinePairs[idx], vLinePair, arg->binaryImage, arg->rgbImage);
-      mutex.lock();
-      if (score > bestModel.getBestScore())
-      {
-        bestModel = model;
-        if (debug)
-        {
-            //std::cout << "Found better model " << i << " " << j << ", score: " << bestScore << std::endl;
-            Mat image = arg->rgbImage.clone();
-            bestModel.drawModel(image);
-            drawLine(hLinePairs[idx].first, image, cv::Scalar(128, 128, 0));
-            drawLine(hLinePairs[idx].second, image, cv::Scalar(128, 128, 0));
-            drawLine(vLinePair.first, image, cv::Scalar(128, 0, 128));
-            drawLine(vLinePair.second, image, cv::Scalar(128, 0, 128));
-            displayImage(windowName, image, 10);
-            std::cout << "Better Score: " << score << std::endl;
-        }
-        
-      }
-      mutex.unlock();
-    }
-  }
-  double cur_time = TimeMeasurement::stop("singleThread" + std::to_string(arg->thread_id));
-  output_mutex.lock();
-  std::cerr << "id: "<<arg->thread_id << ", time: " << cur_time << std::endl;
-  output_mutex.unlock();
-}
 
 void TennisCourtFitter::findBestModelFit(const cv::Mat& binaryImage, const cv::Mat& rgbImage, const int num_threads)
 {
-  std::cout<<"Number of threads: "<<num_threads<<std::endl;
-  std::cout<< "total_hpairs: " << hLinePairs.size() << std::endl;
-  std::vector<std::thread> threads(num_threads);
-  int total_hpairs = hLinePairs.size();
-  int each_hpairs = total_hpairs / num_threads;
-  int offset = total_hpairs % num_threads;
-
-  std::vector<arg_struct> args_list(num_threads);
-  
-
-  for(int i = 0; i < num_threads; i++)
-  {
-    args_list[i].num_threads = num_threads;
-    args_list[i].binaryImage = binaryImage;
-    args_list[i].rgbImage = rgbImage;
-    args_list[i].thread_id = i;
-		threads[i] = std::thread(&TennisCourtFitter::localFindBest, this, &args_list[i]);
-  }
-
-  // };
-  int i = 0;
-  std::cerr << "Iterative searching...";
-  // std::vector<std::thread> thread_list;
-  // for (auto& hLinePair : hLinePairs)
-  // {
-  //     thread_list.push_back(std::thread(parallel_fitting, hLinePair));
-  //     std::cerr << i << " ";
-  //     i++;
-  // }
-  for(int i = 0; i < num_threads; i++)
-	{
-		threads[i].join();
-	}
-  
-    /*for (int it = 0; it <= parameters.finetune_iteration; it++)
+    
+    #pragma omp parallel num_threads(num_threads)
     {
-        std::cout << "finetune..." << it << std::endl;
-        bestModel.finetune(binaryImage, rgbImage, Lines);
+      //int threadid = omp_get_thread_num();
+      //TimeMeasurement::start("\tthread"+std::to_string(threadid));
+      Mat bImg;
+      Mat rImg;
+      TennisCourtModel local_best;
+      TennisCourtModel model;
+      #pragma omp critical
+      {
+        bImg = binaryImage.clone();
+        rImg = rgbImage.clone();
+      }
+
+      #pragma omp for schedule(dynamic)
+      for (int i = 0; i < hLinePairs.size(); i++)
+      {
+        for (int j = 0; j < vLinePairs.size(); j++)
+        {
+          
+          float score = model.fit(hLinePairs[i], vLinePairs[j], bImg, rImg);
+          if (score > local_best.getBestScore())
+          {
+            local_best = model; 
+          }
+          
+        }
+      }
+      
+
+      #pragma omp critical
+      {
+        if(local_best.getBestScore() > bestModel.getBestScore())
+        {
+          bestModel = local_best;
+        }
+      }
+      //double thread_sec = TimeMeasurement::stop("\tthread"+std::to_string(threadid));
+      //#pragma omp critical
+      //{
+      //  std::cerr << "Thread " << threadid << ": " << thread_sec << "\n";
+      //}
     }
-    if (debug)
-    {
-        std::cout << "Best model score = " << bestScore << std::endl;
-        Mat image = rgbImage.clone();
-        bestModel.drawModel(image);
-        displayImage(windowName, image);
-    }*/
-
-    //std::cout << "Fine tune..." << std::endl;
-    
-
-    
 }

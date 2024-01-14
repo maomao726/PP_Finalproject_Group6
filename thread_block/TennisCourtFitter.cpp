@@ -331,45 +331,25 @@ void TennisCourtFitter::sortVerticalLines2(std::vector<Line>& vLines, const cv::
 
 void TennisCourtFitter::localFindBest(arg_struct* arg)
 {
-  //std::cerr << arg->start<<arg->end<<std::endl;
-  TimeMeasurement::start("singleThread" + std::to_string(arg->thread_id));
+
+  TennisCourtModel model;
   for(int idx = arg->start; idx < arg->end; idx++)
   {
-    TennisCourtModel model;
+    
     for (auto& vLinePair : vLinePairs)
     {
       float score = model.fit(hLinePairs[idx], vLinePair, arg->binaryImage, arg->rgbImage);
-      mutex.lock();
-      if (score > bestModel.getBestScore())
+      if (score > arg->local_best.getBestScore())
       {
-        bestModel = model;
-        if (debug)
-        {
-            //std::cout << "Found better model " << i << " " << j << ", score: " << bestScore << std::endl;
-            Mat image = arg->rgbImage.clone();
-            bestModel.drawModel(image);
-            drawLine(hLinePairs[idx].first, image, cv::Scalar(128, 128, 0));
-            drawLine(hLinePairs[idx].second, image, cv::Scalar(128, 128, 0));
-            drawLine(vLinePair.first, image, cv::Scalar(128, 0, 128));
-            drawLine(vLinePair.second, image, cv::Scalar(128, 0, 128));
-            displayImage(windowName, image, 10);
-            std::cout << "Better Score: " << score << std::endl;
-        }
-        
+        arg->local_best = model;
       }
-      mutex.unlock();
     }
   }
-  double cur_time = TimeMeasurement::stop("singleThread" + std::to_string(arg->thread_id));
-  output_mutex.lock();
-  std::cerr << "id: "<<arg->thread_id << ", time: " << cur_time << ", from: "<< arg->start<<", to: " << arg->end << std::endl;
-  output_mutex.unlock();
+
 }
 
 void TennisCourtFitter::findBestModelFit(const cv::Mat& binaryImage, const cv::Mat& rgbImage, const int num_threads)
 {
-  std::cout<<"Number of threads: "<<num_threads<<std::endl;
-  std::cout<< "total_hpairs: " << hLinePairs.size() << std::endl;
   std::vector<std::thread> threads(num_threads);
   int total_hpairs = hLinePairs.size();
   int each_hpairs = total_hpairs / num_threads;
@@ -387,40 +367,19 @@ void TennisCourtFitter::findBestModelFit(const cv::Mat& binaryImage, const cv::M
     args_list[i].binaryImage = binaryImage;
     args_list[i].rgbImage = rgbImage;
     args_list[i].thread_id = i;
+    args_list[i].local_best = TennisCourtModel();
 		threads[i] = std::thread(&TennisCourtFitter::localFindBest, this, &args_list[i]);
     start += disp;
   }
 
-  // };
-  int i = 0;
-  std::cerr << "Iterative searching...";
-  // std::vector<std::thread> thread_list;
-  // for (auto& hLinePair : hLinePairs)
-  // {
-  //     thread_list.push_back(std::thread(parallel_fitting, hLinePair));
-  //     std::cerr << i << " ";
-  //     i++;
-  // }
+
   for(int i = 0; i < num_threads; i++)
 	{
 		threads[i].join();
-	}
-  
-    /*for (int it = 0; it <= parameters.finetune_iteration; it++)
+    if(args_list[i].local_best.getBestScore() > bestModel.getBestScore())
     {
-        std::cout << "finetune..." << it << std::endl;
-        bestModel.finetune(binaryImage, rgbImage, Lines);
+      bestModel = args_list[i].local_best;
     }
-    if (debug)
-    {
-        std::cout << "Best model score = " << bestScore << std::endl;
-        Mat image = rgbImage.clone();
-        bestModel.drawModel(image);
-        displayImage(windowName, image);
-    }*/
+	}
 
-    //std::cout << "Fine tune..." << std::endl;
-    
-
-    
 }

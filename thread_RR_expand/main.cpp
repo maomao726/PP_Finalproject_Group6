@@ -94,7 +94,7 @@ int main(int argc, char** argv)
     TimeMeasurement::start("PP CourtFitter");
     TennisCourtModel model = tennisCourtFitter.run(candidateLines, binaryImage, frame_resized, std::atoi(argv[5]));
     elapsed_seconds = TimeMeasurement::stop("PP CourtFitter");
-    std::cout << "CourtFitter time: " << elapsed_seconds << "s." << std::endl;
+    std::cout << "PP CourtFitter time: " << elapsed_seconds << "s." << std::endl;
     model.fixResized(frame.cols, frame.rows);
     if (argc == 7)
     {

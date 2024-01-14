@@ -9,8 +9,7 @@
 #include "TennisCourtModel.h"
 
 typedef struct arg_struct {
-  int start;
-  int end;
+  int num_threads;
   int thread_id;
   cv::Mat binaryImage;
   cv::Mat rgbImage;

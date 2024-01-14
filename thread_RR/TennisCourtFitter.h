@@ -13,6 +13,7 @@ typedef struct arg_struct {
   int thread_id;
   cv::Mat binaryImage;
   cv::Mat rgbImage;
+  TennisCourtModel local_best;
 } arg_struct;
 
 class TennisCourtFitter

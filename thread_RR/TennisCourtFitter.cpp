@@ -8,7 +8,8 @@
 #include "DebugHelpers.h"
 #include "geometry.h"
 #include <algorithm>
-#include <omp.h>
+#include <thread>
+#include <mutex>
 
 struct edge
 {
@@ -21,6 +22,8 @@ bool sortwithEdgeWeight(edge a, edge b)
 {
     return a.weight > b.weight;
 }
+std::mutex mutex;
+std::mutex output_mutex;
 
 using namespace cv;
 
@@ -326,60 +329,50 @@ void TennisCourtFitter::sortVerticalLines2(std::vector<Line>& vLines, const cv::
     }
 }
 
+void TennisCourtFitter::localFindBest(arg_struct* arg)
+{
+  for(int idx = arg->thread_id; idx < hLinePairs.size(); idx+=arg->num_threads)
+  {
+    TennisCourtModel model;
+    for (auto& vLinePair : vLinePairs)
+    {
+      float score = model.fit(hLinePairs[idx], vLinePair, arg->binaryImage, arg->rgbImage);
+
+      if (score > arg->local_best.getBestScore())
+      {
+        arg->local_best = model;
+      }
+    }
+  }
+}
 
 void TennisCourtFitter::findBestModelFit(const cv::Mat& binaryImage, const cv::Mat& rgbImage, const int num_threads)
 {
-    int i = 0, j = 0;
-    std::cerr<<"Iterative searching ...";
-    
-    #pragma omp parallel num_threads(num_threads)
+  std::vector<std::thread> threads(num_threads);
+  int total_hpairs = hLinePairs.size();
+  int each_hpairs = total_hpairs / num_threads;
+  int offset = total_hpairs % num_threads;
+
+  std::vector<arg_struct> args_list(num_threads);
+  
+
+  for(int i = 0; i < num_threads; i++)
+  {
+    args_list[i].num_threads = num_threads;
+    args_list[i].binaryImage = binaryImage;
+    args_list[i].rgbImage = rgbImage;
+    args_list[i].thread_id = i;
+    args_list[i].local_best = TennisCourtModel();
+		threads[i] = std::thread(&TennisCourtFitter::localFindBest, this, &args_list[i]);
+  }
+
+  for(int i = 0; i < num_threads; i++)
+	{
+		threads[i].join();
+    if(args_list[i].local_best.getBestScore() > bestModel.getBestScore())
     {
-      //int threadid = omp_get_thread_num();
-      //TimeMeasurement::start("\tthread"+std::to_string(threadid));
-      Mat bImg;
-      Mat rImg;
-      TennisCourtModel local_best;
-      TennisCourtModel model;
-      #pragma omp critical
-      {
-        bImg = binaryImage.clone();
-        rImg = rgbImage.clone();
-      }
-
-      #pragma omp for schedule(dynamic)
-      for (int i = 0; i < hLinePairs.size(); i++)
-      {
-        for (int j = 0; j < vLinePairs.size(); j++)
-        {
-          
-          float score = model.fit(hLinePairs[i], vLinePairs[j], bImg, rImg);
-          if (score > local_best.getBestScore())
-          {
-            local_best = model; 
-          }
-          
-        }
-        
-        std::cerr << i <<" ";
-      }
-      
-
-      #pragma omp critical
-      {
-        if(local_best.getBestScore() > bestModel.getBestScore())
-        {
-          bestModel = local_best;
-        }
-      }
-      //double thread_sec = TimeMeasurement::stop("\tthread"+std::to_string(threadid));
-      //#pragma omp critical
-      //{
-      //  std::cerr << "Thread " << threadid << ": " << thread_sec << "\n";
-      //}
+      bestModel = args_list[i].local_best;
     }
-    
-    std::cerr<<std::endl;
-    
+	}
 
-    
 }
