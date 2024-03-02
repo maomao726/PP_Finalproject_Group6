@@ -83,3 +83,11 @@ that's probably because your path isn't correct. Find where your `conanbuildinfo
 `$ ./detect -i {image} -f -p {num_of_threads} white`
 
 Descriptions can be found while command is imcomplete
+
+## result
+
+### Detection result
+![image](img/detect_res.png)
+
+### Speedup result
+![image](img/speedup_res.png)
